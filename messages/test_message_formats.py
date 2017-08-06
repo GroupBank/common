@@ -1,7 +1,7 @@
 import inspect
 
-from utils.messages.message import Message
-from utils.messages import message_formats
+from common.messages.message import Message
+from common.messages import message_formats
 
 
 class TestMessageFormats:

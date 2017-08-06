@@ -1,7 +1,7 @@
 import http.client as http
 from urllib.parse import urlencode
 
-from utils.messages.message import Message
+from common.messages.message import Message
 
 
 class BadRequestError(Exception):

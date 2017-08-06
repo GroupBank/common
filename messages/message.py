@@ -1,6 +1,6 @@
 import json
 
-from utils.crypto.rsa import sign, verify
+from common.crypto.rsa import sign, verify
 
 
 class DecodeError(Exception):

@@ -3,11 +3,11 @@ from unittest.mock import Mock, MagicMock
 import pytest
 from pytest import raises
 
-from utils.messages.connection import Connection, BadRequestError, \
+from common.messages.connection import Connection, BadRequestError, \
     UnauthorizedError, ForbiddenError, ConflictError, NotFoundError, \
     UnknownError
-from utils.messages.message import Message
-from utils.messages.testing_utils import fake_http_response
+from common.messages.message import Message
+from common.messages.testing_utils import fake_http_response
 
 
 class FakeMessage(Message):

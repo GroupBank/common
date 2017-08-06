@@ -1,4 +1,4 @@
-from utils.messages.message import Message
+from common.messages.message import Message
 
 
 class RegisterGroup(Message):

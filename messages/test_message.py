@@ -1,8 +1,8 @@
 from pytest import fixture, raises
 
-from utils.crypto.rsa import InvalidSignature
-from utils.messages.message import Message, DecodeError
-from utils.messages.testing_utils import fake_body, example_key, example_pub_key
+from common.crypto.rsa import InvalidSignature
+from common.messages.message import Message, DecodeError
+from common.messages.testing_utils import fake_body, example_key, example_pub_key
 
 
 class TestMessageCreation:

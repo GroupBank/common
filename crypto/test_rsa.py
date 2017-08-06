@@ -1,7 +1,7 @@
 from pytest import fixture
 from pytest import raises
 
-from utils.crypto import rsa
+from common.crypto import rsa
 
 
 class TestRSA:

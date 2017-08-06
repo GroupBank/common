@@ -1,6 +1,6 @@
 import json
 
-from utils.crypto import rsa
+from common.crypto import rsa
 
 
 class UOMeTools:

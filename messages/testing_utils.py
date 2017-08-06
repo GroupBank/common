@@ -4,7 +4,7 @@ from unittest.mock import Mock, MagicMock
 
 from pytest import fixture
 
-from utils.crypto.rsa import generate_keys, InvalidSignature
+from common.crypto.rsa import generate_keys, InvalidSignature
 
 
 example_key, example_pub_key = generate_keys()
