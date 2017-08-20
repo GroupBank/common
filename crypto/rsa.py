@@ -107,7 +107,7 @@ def dump_pubkey(pubkey: str, key_filepath):
         key_file.write(_str_to_pem(pubkey, _PUBLIC_BEGIN_TAG, _PUBLIC_END_TAG))
 
 
-def sign(key: str, *values: str) -> str:
+def sign(key: str, payload: str) -> str:
     # TODO: *values is a list but the function does not receive a list
     """
     Signs a list of values with the given key.
@@ -126,17 +126,13 @@ def sign(key: str, *values: str) -> str:
         hashes.SHA256()
     )
 
-    to_sign = ""
-    for value in values:
-        to_sign += str(value)
-
-    signer.update(to_sign.encode())
+    signer.update(payload.encode())
     signature = signer.finalize()
 
     return base64.b64encode(signature).decode()
 
 
-def verify(pubkey: str, signature: str, *values: str):
+def verify(pubkey: str, signature: str, payload: str):
     # TODO: *values is a list but the function does not receive a list
     """
     Verifies if a signature is valid. Expects the list of values included in
@@ -157,7 +153,6 @@ def verify(pubkey: str, signature: str, *values: str):
         # hides the cryptographic library used
         raise InvalidSignature()
 
-
     pubkey_object = _str_to_pubkey(pubkey)  # type: rsa.RSAPublicKey
 
     # Padding is done using the recommended PSS scheme and not
@@ -171,7 +166,7 @@ def verify(pubkey: str, signature: str, *values: str):
         hashes.SHA256()
     )
 
-    verifier.update("".join(values).encode())
+    verifier.update(payload.encode())
 
     try:
         verifier.verify()
