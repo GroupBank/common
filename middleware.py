@@ -21,16 +21,14 @@ class VerifySignatureMiddleware(object):
 
         return response
 
-    def process_view(self, request, view_func, view_args, view_kwargs):
+    @staticmethod
+    def process_view(request, view_func, view_args, view_kwargs):
         # https://docs.djangoproject.com/en/1.11/topics/http/middleware/#process-view
         # verify the JSON B64 string. return None if it's fine,
         # return an HTTPResponse with an error if not
 
-        if request.type == 'GET':
-            return None  # No signature verification needed
-
         try:
-            author, blob, signature = request.POST['author'], request.POST['blob'], request.POST['signature']
+            author, signature, payload = request.POST['author'], request.POST['signature'], request.POST['payload']
         except KeyError:
             return HttpResponseBadRequest()
 
@@ -43,7 +41,7 @@ class VerifySignatureMiddleware(object):
         #       It only verifies if the signature matches the given pub key
 
         try:
-            crypto.verify(author, blob, signature)
+            crypto.verify(author, signature, payload)
             return None
         except crypto.InvalidSignature:
             return HttpResponseForbidden()
