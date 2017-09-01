@@ -1,10 +1,13 @@
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from functools import wraps
 
 import common.crypto.rsa as crypto
 
 
 # decorator for verifying the payload is signed by the author of the request
 def verify_author(view):
+
+    @wraps(view)  # to get features like showing the original function name in trace backs
     def wrapper(request):
         # https://docs.djangoproject.com/en/1.11/topics/http/middleware/#process-view
         # verify the JSON B64 string. return None if it's fine,
