@@ -46,3 +46,25 @@ class VerifySignatureMiddleware(object):
         except crypto.InvalidSignature:
             return HttpResponseForbidden()
             # or 401 Unauthorized...
+
+
+class SignResponseMiddleware(object):
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.private_key, self.public_key = crypto.load_keys('server_keys.pem')
+        # One-time configuration and initialization.
+        # Only called once when the web-server starts!
+
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+
+        response = self.get_response(request)
+
+        # Code to be executed for each request/response after
+        # the view is called.
+
+        response['author'] = self.public_key
+        response['signature'] = crypto.sign(self.private_key, response.content.decode())
+
+        return response
