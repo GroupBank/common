@@ -23,6 +23,10 @@ class InvalidSignature(Exception):
     """ Raised when a verification of a signature fails. """
 
 
+class InvalidKey(Exception):
+    """ Raised when a key isn't valid. """
+
+
 def generate_keys() -> (str, str):
     """
     Generates a pair of private and public keys
@@ -223,11 +227,14 @@ def _pubkey_to_str(pubkey_object: rsa.RSAPublicKey) -> str:
 def _str_to_key(key: str) -> rsa.RSAPrivateKey:
     """ Converts a private key in string format to a private key object """
 
-    key_object = serialization.load_pem_private_key(
-        data=_str_to_pem(key, _PRIVATE_BEGIN_TAG, _PRIVATE_END_TAG),
-        password=None,
-        backend=default_backend()
-    )
+    try:
+        key_object = serialization.load_pem_private_key(
+            data=_str_to_pem(key, _PRIVATE_BEGIN_TAG, _PRIVATE_END_TAG),
+            password=None,
+            backend=default_backend()
+        )
+    except ValueError:
+        raise InvalidKey
 
     return key_object
 
@@ -235,10 +242,13 @@ def _str_to_key(key: str) -> rsa.RSAPrivateKey:
 def _str_to_pubkey(pubkey: str) -> rsa.RSAPublicKey:
     """ Converts a public key in string format to a public key object """
 
-    pubkey_object = serialization.load_pem_public_key(
-        data=_str_to_pem(pubkey, _PUBLIC_BEGIN_TAG, _PUBLIC_END_TAG),
-        backend=default_backend()
-    )
+    try:
+        pubkey_object = serialization.load_pem_public_key(
+            data=_str_to_pem(pubkey, _PUBLIC_BEGIN_TAG, _PUBLIC_END_TAG),
+            backend=default_backend()
+        )
+    except ValueError:
+        raise InvalidKey
 
     return pubkey_object
 
@@ -253,6 +263,7 @@ def _str_to_pem(key: str, begin_tag, end_tag) -> bytes:
     pem_key = "\n".join(lines)
     pem_key = begin_tag + "\n" + pem_key + "\n" + end_tag
     return pem_key.encode()
+
 
 def _pem_to_str(pem_key: str, begin_tag, end_tag):
     """ Converts a pem key in PEM format to a string key """

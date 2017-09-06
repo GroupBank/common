@@ -29,7 +29,7 @@ def verify_author(view):
         try:
             crypto.verify(author, signature, payload)
             return view(request)
-        except crypto.InvalidSignature:
+        except (crypto.InvalidSignature, crypto.InvalidKey):
             return HttpResponseForbidden()
             # or 401 Unauthorized...
 
