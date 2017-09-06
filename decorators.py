@@ -1,7 +1,11 @@
+import logging
+
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from functools import wraps
 
 import common.crypto.rsa as crypto
+
+logger = logging.getLogger(__name__)
 
 
 # decorator for verifying the payload is signed by the author of the request
@@ -16,6 +20,7 @@ def verify_author(view):
         try:
             author, signature, payload = request.POST['author'], request.POST['signature'], request.POST['payload']
         except KeyError:
+            logger.info('Request with missing author, signature or payload')
             return HttpResponseBadRequest()
 
         # get user pubkey
@@ -30,6 +35,7 @@ def verify_author(view):
             crypto.verify(author, signature, payload)
             return view(request)
         except (crypto.InvalidSignature, crypto.InvalidKey):
+            logger.info('Request with invalid author key or signature')
             return HttpResponseForbidden()
             # or 401 Unauthorized...
 

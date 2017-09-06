@@ -18,6 +18,8 @@ PUBLIC_EXPONENT = 65537
 KEY_SIZE = 2048
 B64_KEY_LENGTH = 400
 
+SIGNATURE_LENGTH = 400  # todo: substitute for the actual size
+
 
 class InvalidSignature(Exception):
     """ Raised when a verification of a signature fails. """
