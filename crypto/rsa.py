@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 PUBLIC_EXPONENT = 65537
 
 KEY_SIZE = 2048
-B64_KEY_LENGTH = 400
+SERIALIZED_KEY_LENGTH = 400
 
 SIGNATURE_LENGTH = 400  # todo: substitute for the actual size
 
