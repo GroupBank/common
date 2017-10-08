@@ -1,4 +1,4 @@
-from common.crypto.rsa import generate_keys
+from common.crypto.ec_secp256k1 import generate_keys
 
 G1_priv, G1_pub = generate_keys()
 G2_priv, G2_pub = generate_keys()

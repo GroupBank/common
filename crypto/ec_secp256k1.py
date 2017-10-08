@@ -66,7 +66,7 @@ def verify(pubkey: str, signature: str, payload: str):
     try:
         if not bitcoin.ecdsa_verify(payload, signature, pubkey):
             raise InvalidSignature()
-    except ValueError:
+    except Exception:
         raise InvalidSignature()
 
 

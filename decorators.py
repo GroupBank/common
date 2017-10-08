@@ -3,7 +3,7 @@ import logging
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from functools import wraps
 
-import common.crypto.rsa as crypto
+import common.crypto.ec_secp256k1 as crypto
 
 logger = logging.getLogger(__name__)
 

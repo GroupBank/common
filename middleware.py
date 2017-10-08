@@ -1,7 +1,7 @@
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, HttpResponseServerError
 import json
 
-from common.crypto import rsa as crypto  # we might want to change the underlying crypto
+from common.crypto import ec_secp256k1 as crypto  # we might want to change the underlying crypto
 
 
 class VerifySignatureMiddleware(object):
