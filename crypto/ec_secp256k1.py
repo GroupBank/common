@@ -11,9 +11,6 @@ SIGNATURE_LENGTH = 88
 PRIVKEY_FORMAT = 'wif_compressed'
 PUBKEY_FORMAT = 'hex_compressed'
 
-IV = get_random_bytes(16)  # todo: verify the properties the IV needs to have
-# todo: IV needs to be included with the cypher text so that it can be decrypted
-
 
 class InvalidSignature(Exception):
     """ Raised when a verification of a signature fails. """
@@ -91,12 +88,12 @@ def ecdh_key_agreement(self_private_key: str, other_public_key: str) -> bytes:
 def _symmetric_key_from_password(password: str) -> bytes:
 
     """
-    Derives a symmetric key suitable for AES-CBC from a given string password.
+    Derives a symmetric key suitable for AES-CFB from a given string password.
     A slow key derivation function is used to slow down brute force attacks on
     cypher texts encrypted with this password.
 
     :param password: a string to be used as a password
-    :return: a bytes symmetric key suitable for AES-CBC
+    :return: a bytes symmetric key suitable for AES-CFB
     """
     return hashlib.pbkdf2_hmac(password=password.encode(),
                                salt=b'These derived keys must not be stored on a server',
@@ -109,14 +106,16 @@ def _raw_encrypt_message(plaintext: str, symmetric_key: bytes) -> str:
     Private method to encrypt a message string with a bytes symmetric key
 
     :param plaintext: the plaintext string
-    :param symmetric_key: a bytes symmetric key suitable for AES-CBC encryption
+    :param symmetric_key: a bytes symmetric key suitable for AES-CFB encryption
     :return: the encrypted, serialized, cypher text
     """
-    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, IV)
+    iv = get_random_bytes(16)
+    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, iv)
 
     plaintext_bytes = plaintext.encode()
     cypher_text = aes_cipher.encrypt(plaintext_bytes)
-    serialized_cypher_text = b64encode(cypher_text).decode()
+    # include the IV in the serialized
+    serialized_cypher_text = b64encode(iv + cypher_text).decode()
     return serialized_cypher_text
 
 
@@ -125,12 +124,14 @@ def _raw_decrypt_message(serialized_cypher_text: str, symmetric_key: bytes) -> s
     Private method to decrypt a message string with a bytes symmetric key
 
     :param serialized_cypher_text: the encrypted serialized text
-    :param symmetric_key: a bytes symmetric key suitable for AES-CBC encryption
+    :param symmetric_key: a bytes symmetric key suitable for AES-CFB encryption
     :return: the decrypted plaintext string
     """
-    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, IV)
+    # iv is included at the start
+    iv = b64decode(serialized_cypher_text)[0:16]
+    cypher_text = b64decode(serialized_cypher_text)[16:]
 
-    cypher_text = b64decode(serialized_cypher_text)
+    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, iv)
     try:
         plaintext_bytes = aes_cipher.decrypt(cypher_text)
         plaintext = plaintext_bytes.decode()
