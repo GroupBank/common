@@ -1,4 +1,5 @@
 import bitcoin
+
 import hashlib
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
@@ -10,7 +11,6 @@ SIGNATURE_LENGTH = 88
 PRIVKEY_FORMAT = 'wif_compressed'
 PUBKEY_FORMAT = 'hex_compressed'
 
-SALT = get_random_bytes(16)
 IV = get_random_bytes(16)  # todo: verify the properties the IV needs to have
 # todo: IV needs to be included with the cypher text so that it can be decrypted
 
@@ -40,24 +40,79 @@ def generate_keys() -> (str, str):
     return private_key, public_key
 
 
-def get_cipher_from_password(password: str):
-    derived_password = hashlib.pbkdf2_hmac(password=password.encode(),
-                                           salt=SALT,
-                                           hash_name='sha256',
-                                           iterations=100000)
-
-    return AES.new(derived_password, AES.MODE_CFB, IV)
-
-
-def encrypt_message(plaintext: str, password: str) -> str:
+def sign(key: str, payload: str) -> str:
     """
-    Encrypts the private key with a password and returns a base64 string of cypher text.
+    Signs a message with the given key.
 
-    :param plaintext: message plaintext.
-    :param password: password to encrypt the key.
-    :return: base64 string of the cypher text
+    :param key:     private key used to make the signature.
+    :param payload:  message to sign.
+    :return: signature
     """
-    aes_cipher = get_cipher_from_password(password)
+    return bitcoin.ecdsa_sign(payload, key)
+
+
+def verify(pubkey: str, signature: str, payload: str):
+    """
+    Verifies if a signature is valid. Expects the list of values included in
+    the signature to be in the same order as they were signed. If the
+    verification fails it raises an InvalidSignature exception.
+
+    :param pubkey:      public key used to verify the signature.
+    :param signature:   signature to verify encoded in base 64.
+    :param payload:      values included in the signature.
+    :return:
+    :raise InvalidSignature: if the signature is invalid.
+    """
+    try:
+        if not bitcoin.ecdsa_verify(payload, signature, pubkey):
+            raise InvalidSignature()
+    except ValueError:
+        raise InvalidSignature()
+
+
+def ecdh_key_agreement(self_private_key: str, other_public_key: str) -> bytes:
+    """
+    Creates a shared symmetric key between two entities using elyptic curve diffie-hellman
+
+    :param self_private_key: the private key of the entity using the method
+    :param other_public_key: the public key to compute the shared symmetric key with
+    :return: a bytes symmetric key derived from the computed shared secret
+    """
+    # ECDH is simply an EC multiplication of a private key with a public key
+    shared_secret = bitcoin.multiply(other_public_key, self_private_key)
+
+    # the shared key is the x coordinate of the computed EC point
+    shared_key = bitcoin.decode_pubkey(shared_secret)[0]
+
+    # a bytes key is derived from the shared secret
+    return hashlib.sha256(hex(shared_key).encode()).digest()
+
+
+def _symmetric_key_from_password(password: str) -> bytes:
+
+    """
+    Derives a symmetric key suitable for AES-CBC from a given string password.
+    A slow key derivation function is used to slow down brute force attacks on
+    cypher texts encrypted with this password.
+
+    :param password: a string to be used as a password
+    :return: a bytes symmetric key suitable for AES-CBC
+    """
+    return hashlib.pbkdf2_hmac(password=password.encode(),
+                               salt=b'These derived keys must not be stored on a server',
+                               hash_name='sha256',
+                               iterations=200000)
+
+
+def _raw_encrypt_message(plaintext: str, symmetric_key: bytes) -> str:
+    """
+    Private method to encrypt a message string with a bytes symmetric key
+
+    :param plaintext: the plaintext string
+    :param symmetric_key: a bytes symmetric key suitable for AES-CBC encryption
+    :return: the encrypted, serialized, cypher text
+    """
+    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, IV)
 
     plaintext_bytes = plaintext.encode()
     cypher_text = aes_cipher.encrypt(plaintext_bytes)
@@ -65,15 +120,15 @@ def encrypt_message(plaintext: str, password: str) -> str:
     return serialized_cypher_text
 
 
-def decrypt_message(serialized_cypher_text: str, password: str) -> str:
+def _raw_decrypt_message(serialized_cypher_text: str, symmetric_key: bytes) -> str:
     """
-    Decrypts the message with a password and returns it.
+    Private method to decrypt a message string with a bytes symmetric key
 
-    :param serialized_cypher_text: the cypher text in a base64 string.
-    :param password: password to decrypt the key.
-    :return: message string
+    :param serialized_cypher_text: the encrypted serialized text
+    :param symmetric_key: a bytes symmetric key suitable for AES-CBC encryption
+    :return: the decrypted plaintext string
     """
-    aes_cipher = get_cipher_from_password(password)
+    aes_cipher = AES.new(symmetric_key, AES.MODE_CFB, IV)
 
     cypher_text = b64decode(serialized_cypher_text)
     try:
@@ -82,6 +137,28 @@ def decrypt_message(serialized_cypher_text: str, password: str) -> str:
         return plaintext
     except UnicodeDecodeError:
         raise InvalidPassword
+
+
+def encrypt_with_password(plaintext: str, password: str) -> str:
+    """
+    Encrypts the private key with a password and returns a base64 string of cypher text.
+
+    :param plaintext: message plaintext.
+    :param password: password to encrypt the key.
+    :return: base64 string of the cypher text
+    """
+    return _raw_encrypt_message(plaintext, _symmetric_key_from_password(password))
+
+
+def decrypt_with_password(serialized_cypher_text: str, password: str) -> str:
+    """
+    Decrypts the message with a password and returns it.
+
+    :param serialized_cypher_text: the cypher text in a base64 string.
+    :param password: password to decrypt the key.
+    :return: message string
+    """
+    return _raw_decrypt_message(serialized_cypher_text, _symmetric_key_from_password(password))
 
 
 def dump_key(private_key: str, key_file_path, password=None):
@@ -100,7 +177,7 @@ def dump_key(private_key: str, key_file_path, password=None):
 
     with open(key_file_path, "w") as key_file:
         if password:
-            key_file.write(encrypt_message(encoded_private_key, password))
+            key_file.write(encrypt_with_password(encoded_private_key, password))
         else:
             key_file.write(encoded_private_key)
 
@@ -117,7 +194,7 @@ def load_keys(key_file_path, password=None) -> (str, str):
     with open(key_file_path, "r") as key_file:
         try:
             if password:
-                raw_private_key = bitcoin.decode_privkey(decrypt_message(key_file.read(), password))
+                raw_private_key = bitcoin.decode_privkey(decrypt_with_password(key_file.read(), password))
             else:
                 raw_private_key = bitcoin.decode_privkey(key_file.read())
 
@@ -157,34 +234,3 @@ def dump_pubkey(pubkey: str, key_filepath):
             key_file.write(bitcoin.encode_pubkey(pubkey, PUBKEY_FORMAT))
     except Exception as e:
         raise InvalidKey from e
-
-
-def sign(key: str, payload: str) -> str:
-    """
-    Signs a message with the given key.
-
-    :param key:     private key used to make the signature.
-    :param payload:  message to sign.
-    :return: signature
-    """
-    return bitcoin.ecdsa_sign(payload, key)
-
-
-def verify(pubkey: str, signature: str, payload: str):
-    """
-    Verifies if a signature is valid. Expects the list of values included in
-    the signature to be in the same order as they were signed. If the
-    verification fails it raises an InvalidSignature exception.
-
-    :param pubkey:      public key used to verify the signature.
-    :param signature:   signature to verify encoded in base 64.
-    :param payload:      values included in the signature.
-    :return:
-    :raise InvalidSignature: if the signature is invalid.
-    """
-
-    try:
-        if not bitcoin.ecdsa_verify(payload, signature, pubkey):
-            raise InvalidSignature()
-    except ValueError:
-        raise InvalidSignature()

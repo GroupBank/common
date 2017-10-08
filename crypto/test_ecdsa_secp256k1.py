@@ -31,6 +31,17 @@ class TestECDSASecp256k1:
         with raises(ecdsa_secp256k1.InvalidSignature):
             valid_signature = ecdsa_secp256k1.sign(key_1, plain_text)
             ecdsa_secp256k1.verify(pubkey_2, valid_signature, plain_text)
+            
+    def test_GenerateSharedKeyWithECDH(self):
+        key_1, pubkey_1 = ecdsa_secp256k1.generate_keys()
+        key_2, pubkey_2 = ecdsa_secp256k1.generate_keys()
+
+        secret1 = ecdsa_secp256k1.ecdh_key_agreement(key_1, pubkey_2)
+        secret2 = ecdsa_secp256k1.ecdh_key_agreement(key_2, pubkey_1)
+        secret_sanity_check = ecdsa_secp256k1.ecdh_key_agreement(key_1, pubkey_1)
+
+        assert secret1 == secret2
+        assert secret1 != secret_sanity_check
 
     def test_DumpingAPrivateKeyAndLoadingTheRespectiveReturnsTheSameKey(self, tmpfile):
         key, pubkey = ecdsa_secp256k1.generate_keys()
@@ -44,8 +55,8 @@ class TestECDSASecp256k1:
     def test_EncryptingAndDecryptingAPrivateKeyWithPasswordReturnsTheSameKey(self, tmpfile):
         key, pubkey = ecdsa_secp256k1.generate_keys()
 
-        cypher_text = ecdsa_secp256k1.encrypt_message(key, password="1234")
-        recovered_key = ecdsa_secp256k1.decrypt_message(cypher_text, password="1234")
+        cypher_text = ecdsa_secp256k1.encrypt_with_password(key, password="1234")
+        recovered_key = ecdsa_secp256k1.decrypt_with_password(cypher_text, password="1234")
 
         assert key != cypher_text
         assert key == recovered_key
