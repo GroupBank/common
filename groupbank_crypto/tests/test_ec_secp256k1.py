@@ -1,7 +1,7 @@
 from pytest import fixture
 from pytest import raises
 
-from common.crypto import ec_secp256k1
+from groupbank_crypto import ec_secp256k1
 
 
 class TestECDSASecp256k1:
