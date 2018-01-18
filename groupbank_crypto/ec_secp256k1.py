@@ -1,3 +1,5 @@
+from typing import NewType
+
 import bitcoin
 
 import hashlib
@@ -10,6 +12,11 @@ SIGNATURE_LENGTH = 88
 
 PRIVKEY_FORMAT = 'wif_compressed'
 PUBKEY_FORMAT = 'hex_compressed'
+
+# Using a specific type for the key provides semantic meaning to the arguments of function which
+# expect a key and allows us to change the type of the key quickly without having to change the
+# type hints on all functions.
+Key = NewType('Key', str)
 
 
 class InvalidSignature(Exception):
@@ -24,7 +31,7 @@ class InvalidPassword(Exception):
     """ Raised when a key isn't valid. """
 
 
-def generate_keys() -> (str, str):
+def generate_keys() -> (Key, Key):
     """
     Generates a pair of private and public keys
 
@@ -37,7 +44,7 @@ def generate_keys() -> (str, str):
     return private_key, public_key
 
 
-def sign(key: str, payload: str) -> str:
+def sign(key: Key, payload: str) -> str:
     """
     Signs a message with the given key.
 
@@ -48,7 +55,7 @@ def sign(key: str, payload: str) -> str:
     return bitcoin.ecdsa_sign(payload, key)
 
 
-def verify(pubkey: str, signature: str, payload: str):
+def verify(pubkey: Key, signature: str, payload: str):
     """
     Verifies if a signature is valid. Expects the list of values included in
     the signature to be in the same order as they were signed. If the
@@ -67,7 +74,7 @@ def verify(pubkey: str, signature: str, payload: str):
         raise InvalidSignature()
 
 
-def ecdh_key_agreement(self_private_key: str, other_public_key: str) -> bytes:
+def ecdh_key_agreement(self_private_key: Key, other_public_key: Key) -> bytes:
     """
     Creates a shared symmetric key between two entities using elyptic curve diffie-hellman
 
@@ -86,7 +93,6 @@ def ecdh_key_agreement(self_private_key: str, other_public_key: str) -> bytes:
 
 
 def _symmetric_key_from_password(password: str) -> bytes:
-
     """
     Derives a symmetric key suitable for AES-CFB from a given string password.
     A slow key derivation function is used to slow down brute force attacks on
@@ -162,7 +168,7 @@ def decrypt_with_password(serialized_cypher_text: str, password: str) -> str:
     return _raw_decrypt_message(serialized_cypher_text, _symmetric_key_from_password(password))
 
 
-def dump_key(private_key: str, key_file_path, password=None):
+def dump_key(private_key: Key, key_file_path, password=None):
     """
     Dumps a private key to a key file in the wif_compressed format.
     Takes the password to encrypt the key file as an optional argument.
@@ -183,7 +189,7 @@ def dump_key(private_key: str, key_file_path, password=None):
             key_file.write(encoded_private_key)
 
 
-def load_keys(key_file_path, password=None) -> (str, str):
+def load_keys(key_file_path, password=None) -> (Key, Key):
     """
     Loads the private and public keys from a key file in the PEM format.
     Takes the password to decrypt the key file as an optional argument.
@@ -195,7 +201,8 @@ def load_keys(key_file_path, password=None) -> (str, str):
     with open(key_file_path, "r") as key_file:
         try:
             if password:
-                raw_private_key = bitcoin.decode_privkey(decrypt_with_password(key_file.read(), password))
+                raw_private_key = bitcoin.decode_privkey(
+                    decrypt_with_password(key_file.read(), password))
             else:
                 raw_private_key = bitcoin.decode_privkey(key_file.read())
 
@@ -207,7 +214,7 @@ def load_keys(key_file_path, password=None) -> (str, str):
             raise InvalidKey from e
 
 
-def load_pubkey(key_file_path) -> str:
+def load_pubkey(key_file_path) -> Key:
     """
     Loads a public key from a key file.
     Takes the password to decrypt the key file as an optional argument.
@@ -223,7 +230,7 @@ def load_pubkey(key_file_path) -> str:
         raise InvalidKey from e
 
 
-def dump_pubkey(pubkey: str, key_filepath):
+def dump_pubkey(pubkey: Key, key_filepath):
     """
     Dumps a public key to a key file in the hex_compressed format.
 
